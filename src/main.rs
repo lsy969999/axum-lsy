@@ -1,5 +1,7 @@
-use axum::{routing::get, Router, extract::State, response::{Html, IntoResponse}};
+use askama::Template;
+use axum::{routing::get, Router, extract::State, response::{Html, IntoResponse, Response}, http::StatusCode};
 use sqlx::PgPool;
+use tower_http::services::ServeDir;
 use tracing::info;
 
 async fn hello_world(State(pool): State<PgPool>) -> impl IntoResponse {
@@ -14,8 +16,38 @@ async fn main(#[shuttle_shared_db::Postgres(
   local_uri = "postgresql://myuser:mypassword@localhost:5432/mydatabase"
 )] pool: PgPool,) -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
-          .route("/", get(hello_world))
+          .route("/hello_world", get(hello_world))
+          .route("/", get(idx))
+          .route("/messages", get(||async {
+            Html("<span class='test'>haha</span><script>console.log('dudu');</script>")
+          }))
+          .nest_service("/assets", ServeDir::new("assets"))
           .with_state(pool);
     info!("hi");
     Ok(router.into())
+}
+
+#[derive(Template)]
+#[template(path="index.html")]
+struct IdxTemplate{}
+async fn idx()-> impl IntoResponse{
+  HtmlTemplate(IdxTemplate{})
+}
+
+struct HtmlTemplate<T>(T);
+
+impl<T> IntoResponse for HtmlTemplate<T>
+where
+    T: Template,
+{
+    fn into_response(self) -> Response {
+        match self.0.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template. Error: {err}"),
+            )
+                .into_response(),
+        }
+    }
 }
