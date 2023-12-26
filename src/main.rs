@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use tower_http::services::ServeDir;
 use anyhow::anyhow;
 use tracing::info;
-use crate::{controller::index_controller::{idx, message, authorize, protected}, api::hello_world::hello_world, config::JwtKeys};
+use crate::{controller::index_controller::{idx, message, authorize, protected, cookie_test}, api::hello_world::hello_world, config::JwtKeys};
 mod config;
 mod controller;
 mod api;
@@ -34,6 +34,7 @@ async fn main(
           .route("/hello_world", get(hello_world))
           .route("/", get(idx))
           .route("/messages", get(message))
+          // .route("/cookieTest", get(cookie_test))
 
           .route("/authorize", post(authorize))
           .route("/protected", post(protected))

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 askama = "0.12.1"
 axum = "0.7.2"
-axum-extra = { version = "0.9.0", features = ["typed-header"] }
+axum-extra = { version = "0.9.0", features = ["typed-header", "cookie", "cookie-private"] }
 shuttle-axum = { version = "0.35.2", default-features = false, features = ["axum-0-7"] }
 shuttle-runtime = "0.35.2"
 shuttle-secrets = "0.35.2"

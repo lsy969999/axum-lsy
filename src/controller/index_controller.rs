@@ -1,6 +1,7 @@
 use askama::Template;
-use axum::{response::{IntoResponse, Html}, Json};
+use axum::{response::{IntoResponse, Html}, Json, http::StatusCode};
 use jsonwebtoken::{encode, Header};
+use axum_extra::{extract::cookie::{Cookie, PrivateCookieJar}};
 
 use crate::config::{HtmlTemplate, Claims, AuthError, AuthPayload, AuthBody, self};
 
@@ -20,6 +21,18 @@ pub async fn protected(claims: Claims) -> Result<String, AuthError> {
   Ok(format!(
     "Welecom to the protected area! your data: {claims}"
   ))
+}
+
+pub async fn cookie_test(pjar: PrivateCookieJar) -> impl IntoResponse  {
+  let upjar = pjar.add(Cookie::new("ccc", "kkk"));
+  (upjar, Html(format!("good ddd")))
+    // Ok((upjar, Html(format!("good ddd"))))
+  // if let Some(test) = pjar.get("test") {
+  //   let upjar = pjar.add(Cookie::new("ccc", "kkk"));
+  //   Ok((upjar, Html(format!("good {test}"))))
+  // } else {
+  //   Err(StatusCode::UNAUTHORIZED)
+  // }
 }
 
 pub async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthError> {
