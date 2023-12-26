@@ -1,0 +1,3 @@
+```
+cargo shuttle run
+```
