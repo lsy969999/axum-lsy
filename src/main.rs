@@ -1,17 +1,14 @@
-use askama::Template;
-use axum::{routing::get, Router, extract::State, response::{Html, IntoResponse, Response}, http::StatusCode};
+use axum::{routing::get, Router};
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use tower_http::services::ServeDir;
-use tracing::info;
 use anyhow::anyhow;
+use tracing::info;
+use crate::{controller::index_controller::{idx, message}, api::hello_world::hello_world};
 
-async fn hello_world(State(pool): State<PgPool>) -> impl IntoResponse {
-  let row: (i64,) = sqlx::query_as("SELECT $1")
-    .bind(150_i64).fetch_one(&pool).await.expect("db fetch fail!");
-    let st = format!("hello world {}", row.0.to_string());
-    Html(st)
-}
+mod config;
+mod controller;
+mod api;
 
 #[shuttle_runtime::main]
 async fn main(
@@ -29,36 +26,9 @@ async fn main(
     let router = Router::new()
           .route("/hello_world", get(hello_world))
           .route("/", get(idx))
-          .route("/messages", get(||async {
-            Html("<span class='test'>haha</span><script>console.log('dudu');</script>")
-          }))
+          .route("/messages", get(message))
           .nest_service("/assets", ServeDir::new("assets"))
           .with_state(pool)
           .with_state(secret_store);
     Ok(router.into())
-}
-
-#[derive(Template)]
-#[template(path="index.html")]
-struct IdxTemplate{}
-async fn idx()-> impl IntoResponse{
-  HtmlTemplate(IdxTemplate{})
-}
-
-struct HtmlTemplate<T>(T);
-
-impl<T> IntoResponse for HtmlTemplate<T>
-where
-    T: Template,
-{
-    fn into_response(self) -> Response {
-        match self.0.render() {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template. Error: {err}"),
-            )
-                .into_response(),
-        }
-    }
 }
