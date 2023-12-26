@@ -1,10 +1,13 @@
-use axum::{routing::{get, post}, Router};
+use axum::{Router, routing::{get, post}};
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
-use tower_http::services::ServeDir;
+use tokio::signal;
 use anyhow::anyhow;
+use tower_http::services::ServeDir;
 use tracing::info;
-use crate::{controller::index_controller::{idx, message, authorize, protected, cookie_test}, api::hello_world::hello_world, config::JwtKeys};
+
+use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}};
+
 mod config;
 mod controller;
 mod api;
@@ -30,6 +33,8 @@ async fn main(
     };
     config::JWT_KEYS.get_or_init(||JwtKeys::new(jwt_scret.as_bytes()));
 
+    let state = AppState{pool};
+
     let router = Router::new()
           .route("/hello_world", get(hello_world))
           .route("/", get(idx))
@@ -40,6 +45,28 @@ async fn main(
           .route("/protected", post(protected))
 
           .nest_service("/assets", ServeDir::new("assets"))
-          .with_state(pool);
+          .with_state(state);
+
     Ok(router.into())
+}
+
+async fn shutdown_signal() {
+  let ctrl_c = async {
+    signal::ctrl_c().await.expect("failed to install Ctrl+C handler")
+  };
+
+  #[cfg(unix)]
+  let terminate = async {
+      signal::unix::signal(signal::unix::SignalKind::terminate())
+          .expect("failed to install signal handler")
+          .recv()
+          .await;
+  };
+
+  #[cfg(not(unix))]
+  let terminate = std::future::pending::<()>();
+  tokio::select! {
+    _ = ctrl_c => {},
+    _ = terminate => {}
+  }
 }
