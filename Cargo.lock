@@ -305,6 +305,7 @@ dependencies = [
  "axum 0.7.2",
  "axum-extra",
  "jsonwebtoken",
+ "lazy_static",
  "once_cell",
  "serde",
  "serde_json",
