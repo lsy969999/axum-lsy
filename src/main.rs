@@ -1,9 +1,11 @@
-use axum::{Router, routing::{get, post}, extract::{Request, FromRequest}, response::{IntoResponse, Response}, async_trait, Json, Form, http::{header::CONTENT_TYPE, StatusCode}, RequestExt};
+use std::sync::Arc;
+use axum::{Router, routing::{get, post}, extract::{Request, FromRequest}, response::{IntoResponse, Response}, async_trait, Json, Form, http::{header::CONTENT_TYPE, StatusCode}, RequestExt, middleware::{Next, self}};
 use serde::{Serialize, Deserialize};
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use anyhow::anyhow;
 use tower_http::services::ServeDir;
+use tower_http::compression::CompressionLayer;
 use tracing::{info, debug};
 
 use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}};
@@ -33,22 +35,41 @@ async fn main(
     };
     config::JWT_KEYS.get_or_init(||JwtKeys::new(jwt_scret.as_bytes()));
 
-    let state = AppState{pool};
+    let state = Arc::new(AppState{pool});
 
+    let auth_router = Router::new();
+
+    let api_router = Router::new()
+                          .route("/hello_world", get(hello_world))
+                          .with_state(state.clone());
+
+    let view_router = Router::new()
+                          .route("/", get(idx)).route_layer(middleware::from_fn(check_hello_world))
+                          .with_state(state.clone());
+                          
+    let test_router = Router::new() 
+                          .route("/messages", get(message))
+                          .route("/extract", post(extract))
+                          .route("/authorize", post(authorize))
+                          .route("/protected", post(protected))
+                          .with_state(state.clone());
     let router = Router::new()
-          .route("/hello_world", get(hello_world))
-          .route("/", get(idx))
-          .route("/messages", get(message))
-          .route("/extract", post(extract))
-          // .route("/cookieTest", get(cookie_test))
-
-          .route("/authorize", post(authorize))
-          .route("/protected", post(protected))
-
+          .nest("/auth", auth_router)
+          .nest("/", view_router)
+          .nest("/api", api_router)
+          .nest("/test", test_router)
           .nest_service("/assets", ServeDir::new("assets"))
-          .with_state(state);
-
+          .layer(CompressionLayer::new());
     Ok(router.into())
+}
+
+async fn check_hello_world(req: Request, next: Next) -> Result<Response, StatusCode> {
+  // if req.headers().get(CONTENT_TYPE).unwrap() != "application/json" {
+  //   return Err(StatusCode::BAD_REQUEST);
+  // }
+  debug!("check_hello_world");
+
+  Ok(next.run(req).await)
 }
 
 
