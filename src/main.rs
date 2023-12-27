@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use tower_http::{services::ServeDir, cors::CorsLayer};
 use tower_http::compression::CompressionLayer;
 use tracing::{info, debug};
-use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}, layers::test_layer::test_layer};
+use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::{index_controller::{idx, message, authorize, protected}, test_controller::test_index}, layers::test_layer::test_layer};
 mod config;
 mod controller;
 mod api;
@@ -47,6 +47,7 @@ async fn main(
                           .with_state(state.clone());
                           
     let test_router = Router::new() 
+                          .route("/", get(test_index))
                           .route("/messages", get(message))
                           .route("/extract", post(extract))
                           .route("/authorize", post(authorize))

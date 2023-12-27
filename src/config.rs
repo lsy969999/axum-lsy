@@ -6,7 +6,7 @@ use axum_extra::{TypedHeader, headers::{Authorization, authorization::Bearer}};
 use jsonwebtoken::{EncodingKey, DecodingKey, Validation, decode};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool};
 
 pub struct HtmlTemplate<T>(pub T);
 impl<T> IntoResponse for HtmlTemplate<T>
@@ -95,6 +95,24 @@ impl IntoResponse for AuthError {
           "error": error_message
         }));
         (status, body).into_response()
+    }
+}
+pub struct AppError(pub anyhow::Error);
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+      let body = Json(json!({
+        "error": format!("Something went wrong: {}", self.0)
+      }));
+        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+    }
+}
+
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
     }
 }
 

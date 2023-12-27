@@ -1,0 +1,14 @@
+{% extends "test/layout/defaultLayout.html" %}
+
+{% block title %}Test{% endblock %}
+
+{% block head %}
+  <style>
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1>Index</h1>
+  <p>Hello, world!</p>
+  {% include "test/parts/test.html" %}
+{% endblock %}
