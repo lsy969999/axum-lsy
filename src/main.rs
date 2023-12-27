@@ -1,10 +1,10 @@
-use axum::{Router, routing::{get, post}};
+use axum::{Router, routing::{get, post}, extract::{Request, FromRequest}, response::{IntoResponse, Response}, async_trait, Json, Form, http::{header::CONTENT_TYPE, StatusCode}, RequestExt};
+use serde::{Serialize, Deserialize};
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
-use tokio::signal;
 use anyhow::anyhow;
 use tower_http::services::ServeDir;
-use tracing::info;
+use tracing::{info, debug};
 
 use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}};
 
@@ -39,6 +39,7 @@ async fn main(
           .route("/hello_world", get(hello_world))
           .route("/", get(idx))
           .route("/messages", get(message))
+          .route("/extract", post(extract))
           // .route("/cookieTest", get(cookie_test))
 
           .route("/authorize", post(authorize))
@@ -50,23 +51,66 @@ async fn main(
     Ok(router.into())
 }
 
-async fn shutdown_signal() {
-  let ctrl_c = async {
-    signal::ctrl_c().await.expect("failed to install Ctrl+C handler")
-  };
 
-  #[cfg(unix)]
-  let terminate = async {
-      signal::unix::signal(signal::unix::SignalKind::terminate())
-          .expect("failed to install signal handler")
-          .recv()
-          .await;
-  };
+#[derive(Debug, Serialize, Deserialize)]
+struct Payload {
+  foo: String
+}
 
-  #[cfg(not(unix))]
-  let terminate = std::future::pending::<()>();
-  tokio::select! {
-    _ = ctrl_c => {},
-    _ = terminate => {}
+async fn extract(JsonOrForm(payload): JsonOrForm<Payload>) {
+  debug!("payload: {:?}", payload.foo)
+}
+
+struct JsonOrForm<T>(T);
+
+
+#[async_trait]
+impl<S, T> FromRequest<S> for JsonOrForm<T>
+where
+    S: Send + Sync,
+    Json<T>: FromRequest<()>,
+    Form<T>: FromRequest<()>,
+    T: 'static,
+{
+  type Rejection = Response;
+
+  async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
+      let content_type_header = req.headers().get(CONTENT_TYPE);
+      let content_type = content_type_header.and_then(|value| value.to_str().ok());
+
+      if let Some(content_type) = content_type {
+          if content_type.starts_with("application/json") {
+              let Json(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
+              return Ok(Self(payload));
+          }
+
+          if content_type.starts_with("application/x-www-form-urlencoded") {
+              let Form(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
+              return Ok(Self(payload));
+          }
+      }
+
+      Err(StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response())
   }
 }
+
+// async fn shutdown_signal() {
+//   let ctrl_c = async {
+//     signal::ctrl_c().await.expect("failed to install Ctrl+C handler")
+//   };
+
+//   #[cfg(unix)]
+//   let terminate = async {
+//       signal::unix::signal(signal::unix::SignalKind::terminate())
+//           .expect("failed to install signal handler")
+//           .recv()
+//           .await;
+//   };
+
+//   #[cfg(not(unix))]
+//   let terminate = std::future::pending::<()>();
+//   tokio::select! {
+//     _ = ctrl_c => {},
+//     _ = terminate => {}
+//   }
+// }
