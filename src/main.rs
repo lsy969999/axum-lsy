@@ -1,10 +1,10 @@
 use std::sync::Arc;
-use axum::{Router, routing::{get, post}, extract::{Request, FromRequest}, response::{IntoResponse, Response}, async_trait, Json, Form, http::{header::CONTENT_TYPE, StatusCode}, RequestExt, middleware::{Next, self}};
+use axum::{Router, routing::{get, post}, extract::{Request, FromRequest}, response::{IntoResponse, Response}, async_trait, Json, Form, http::{header::CONTENT_TYPE, StatusCode, HeaderValue}, RequestExt, middleware::{Next, self}};
 use serde::{Serialize, Deserialize};
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use anyhow::anyhow;
-use tower_http::services::ServeDir;
+use tower_http::{services::ServeDir, cors::CorsLayer};
 use tower_http::compression::CompressionLayer;
 use tracing::{info, debug};
 use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}, layers::test_layer::test_layer};
@@ -59,7 +59,11 @@ async fn main(
           .nest("/api", api_router)
           .nest("/test", test_router)
           .nest_service("/assets", ServeDir::new("assets"))
-          .layer(CompressionLayer::new());
+          .layer(CompressionLayer::new())
+          .layer(
+            CorsLayer::new()
+              .allow_origin("http://127.0.0.1:5500".parse::<HeaderValue>().unwrap())
+          );
     Ok(router.into())
 }
 
