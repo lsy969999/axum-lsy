@@ -7,12 +7,11 @@ use anyhow::anyhow;
 use tower_http::services::ServeDir;
 use tower_http::compression::CompressionLayer;
 use tracing::{info, debug};
-
-use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}};
-
+use crate::{config::{JwtKeys, AppState}, api::hello_world::hello_world, controller::index_controller::{idx, message, authorize, protected}, layers::test_layer::test_layer};
 mod config;
 mod controller;
 mod api;
+mod layers;
 
 #[shuttle_runtime::main]
 async fn main(
@@ -52,7 +51,8 @@ async fn main(
                           .route("/extract", post(extract))
                           .route("/authorize", post(authorize))
                           .route("/protected", post(protected))
-                          .with_state(state.clone());
+                          .with_state(state.clone())
+                          .layer(middleware::from_fn(test_layer));
     let router = Router::new()
           .nest("/auth", auth_router)
           .nest("/", view_router)
