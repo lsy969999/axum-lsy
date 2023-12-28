@@ -22,21 +22,21 @@ pub struct EmailAuthForm {
 pub async fn email_auth(
   jar: CookieJar,
   Form(email_auth): Form<EmailAuthForm>,
-) -> Result<(CookieJar, Response), AppError> {
+) -> Result<(Option<CookieJar>, Response), AppError> {
   
   let cond = email_auth.email == "lsy" && email_auth.password == "lsy";
   if cond {
     let r = EmailAuthSuccessTemplate{}.render();
     let cookie = Cookie::build(("authTest", "value")).path("/").http_only(true);
     match r {
-      Ok(html) => Ok((jar.add(cookie), Html(html).into_response())),
+      Ok(html) => Ok((Some(jar.add(cookie)), Html(html).into_response())),
       Err(err) => Err(AppError(err.into())),
     }
   } else {
     let r = EmailAuthFailTemplate{}.render();
     let cookie = Cookie::build(("authTest", "value")).path("/").http_only(true);
     match r {
-      Ok(html) => Ok((jar.remove(cookie), Html(html).into_response())),
+      Ok(html) => Ok((Some(jar.remove(cookie)), Html(html).into_response())),
       Err(err) => Err(AppError(err.into())),
     }
   }
