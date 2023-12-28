@@ -11,4 +11,24 @@
   <h1>Index</h1>
   <p>Hello, world!</p>
   {% include "test/parts/test.html" %}
+  <div hx-get="/test/messages" hx-swap="outerHTML" hx-push-url="true">
+      Put To Messages
+  </div>
+
+
+  <h3>Signup Form</h3>
+  <form hx-post="/auth/email">
+    <div>
+      <label>Email</label>
+      <input name="email" hx-indicator="#indEmail" />
+      <span id="indEmail" class="htmx-indicator">loadingE</span>
+    </div>
+    <div>
+      <label>Password</label>
+      <input name="password" hx-indicator="#indPass" />
+      <span id="indPass" class="htmx-indicator">loadingP</span>
+    </div>
+    <div hx-target="this" hx-swap="outerHTML"></div>
+    <button>Submit</button>
+  </form>
 {% endblock %}

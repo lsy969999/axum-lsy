@@ -6,7 +6,7 @@ use axum_extra::{TypedHeader, headers::{Authorization, authorization::Bearer}};
 use jsonwebtoken::{EncodingKey, DecodingKey, Validation, decode};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
-use sqlx::{PgPool};
+use sqlx::PgPool;
 
 pub struct HtmlTemplate<T>(pub T);
 impl<T> IntoResponse for HtmlTemplate<T>
