@@ -1,9 +1,8 @@
 import { hello } from "./app_interface";
 import htmx from "htmx.org"
-import * as PIXI from 'pixi.js';
+import './pixi'
 
 export {
   hello,
   htmx,
-  PIXI,
 }
