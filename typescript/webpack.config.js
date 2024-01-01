@@ -10,6 +10,18 @@ module.exports = {
         use: 'ts-loader',
         exclude: /node_modules/,
       },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: '[name].[ext]',
+              outputPath: '../image/gen', // 이미지를 저장할 폴더 경로
+            },
+          },
+        ],
+      },
     ],
   },
   resolve: {
